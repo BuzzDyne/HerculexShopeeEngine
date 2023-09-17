@@ -37,7 +37,7 @@ class DbModule:
 
     # endregion
 
-    def getProcessSyncDate(self) -> Dict:
+    def getProcessSyncData(self) -> Dict:
         sql = """
             SELECT 
                 initial_sync, 
