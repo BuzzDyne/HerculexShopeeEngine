@@ -142,6 +142,7 @@ class ShopeeModule:
         return [order["order_sn"] for order in res_json["response"]["order_list"]]
 
     def getOrderDetail(self, order_ecom_id):
+        """returns a list of dict containing each OrderDetails from ShopeeAPI"""
         url_path = "/api/v2/order/get_order_detail"
 
         params = {
@@ -150,9 +151,10 @@ class ShopeeModule:
         }
 
         res_json, err = self._call_shopee_api(url_path, params)
+        if err is not None:
+            print(err)
 
-        return res_json
-
+        return res_json['response']['order_list']
 
 class ShopeeAPIError(Exception):
     pass

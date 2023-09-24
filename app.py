@@ -35,13 +35,16 @@ class App:
         success = False
         while not success:
             try:
-                list_of_shopee_active_orders = self.sh.getActiveOrders()
+                listStr_of_shopee_active_orders = self.sh.getActiveOrders()
                 success = True
             except ShopeeAccessTokenExpired as e:
                 self._refreshAccessToken()
 
-        # Test
-        self.sh.getOrderDetail(list_of_shopee_active_orders)
+        # Get Order Detail from Shopee
+        listDict_shope_order_details = self.sh.getOrderDetail(listStr_of_shopee_active_orders)
+
+        # Get Existing
+        listDict_db_order_details = self.db.getOrderIDsByEcomIDs(listStr_of_shopee_active_orders)
 
         # Logging
         self.db.Log(PROCESS_NAME, "Process END")
@@ -50,3 +53,5 @@ class App:
 def create():
     app = App()
     app.syncShopeeNewOrderdata()
+
+create()

@@ -74,5 +74,18 @@ class DbModule:
         self.cnx.commit()
 
     def getOrderIDsByEcomIDs(self, list_of_ecoms_id):
-        """Returns a list of di"""
-        return
+        format_string = (','.join(['%s'] * len(list_of_ecoms_id)))
+
+        sql = """
+            SELECT 
+                id, 
+                ecom_order_id,
+                ecom_order_status
+            FROM order_tm
+            WHERE ecommerce_code = "S"
+            AND ecom_order_id IN (%s)
+        """ % format_string
+        self.cursor.execute(sql, tuple(list_of_ecoms_id))
+        res = self.cursor.fetchall()
+
+        return res
