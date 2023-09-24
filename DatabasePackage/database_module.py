@@ -20,7 +20,6 @@ class DbModule:
 
         self.cursor = self.cnx.cursor()
 
-    # region Logging
     def Log(self, activityType, desc):
         sql = """
             INSERT INTO globallogging_th (
@@ -34,8 +33,6 @@ class DbModule:
 
         self.cursor.execute(sql, val)
         self.cnx.commit()
-
-    # endregion
 
     def getProcessSyncDate(self) -> Dict:
         sql = """
@@ -59,15 +56,23 @@ class DbModule:
             "refresh_token": res[3],
         }
 
-    def setTokpedLastSynced(self, input_unixTS):
+    def setShopeeTokens(self, access_token, refresh_token):
         sql = """
             UPDATE hcxprocesssyncstatus_tm
             SET
-                last_synced = %s
+                access_token = %s,
+                refresh_token = %s
             WHERE platform_name = "SHOPEE"
         """
 
-        val = (input_unixTS,)
+        val = (
+            access_token,
+            refresh_token,
+        )
 
         self.cursor.execute(sql, val)
         self.cnx.commit()
+
+    def getOrderIDsByEcomIDs(self, list_of_ecoms_id):
+        """Returns a list of di"""
+        return

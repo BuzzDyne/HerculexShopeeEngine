@@ -1,11 +1,21 @@
 from DatabasePackage.database_module import DbModule
-from ShopeePackage.shopee_module import ShopeeModule
+from ShopeePackage.shopee_module import ShopeeModule, ShopeeAccessTokenExpired
 
 
 class App:
     def __init__(self):
         self.db = DbModule()
-        self.sh = ShopeeModule()
+        syncData = self.db.getProcessSyncDate()
+        self.sh = ShopeeModule(syncData["access_token"], syncData["refresh_token"])
+        self._refreshAccessToken()
+
+    def _refreshAccessToken(self):
+        access, refresh = self.sh.getNewTokens()
+
+        self.db.setShopeeTokens(access, refresh)
+
+        self.sh.acccessToken = access
+        self.sh.refreshToken = refresh
 
     def testGetOrderList(self):
         listOfOrders = []
@@ -16,39 +26,27 @@ class App:
         return
 
     def syncShopeeNewOrderdata(self):
-        currUnixTS = int(dt.now(tz.utc).timestamp())
         PROCESS_NAME = "Sync New Orders"
 
         # Logging
         self.db.Log(PROCESS_NAME, "Process BEGIN")
 
-        # Get Sync Date
-        sync_info = self.db.getProcessSyncDate()
-        start_period = (
-            sync_info["initial_sync"]
-            if sync_info["last_synced"] is None
-            else sync_info["last_synced"]
-        )
-        end_period = currUnixTS
-        self.db.Log(
-            PROCESS_NAME, f"StartPeriod : {start_period} | EndPeriod : {end_period}"
-        )
+        # Get On Process Shopee Orders
+        success = False
+        while not success:
+            try:
+                list_of_shopee_active_orders = self.sh.getActiveOrders()
+                success = True
+            except ShopeeAccessTokenExpired as e:
+                self._refreshAccessToken()
 
-        if start_period > end_period:
-            self.db.Log(
-                PROCESS_NAME, "initial/last sync time is bigger than current time"
-            )
-            self.db.Log(PROCESS_NAME, "Process END")
-            return
+        # Test
+        self.sh.getOrderDetail(list_of_shopee_active_orders)
 
-        #
+        # Logging
+        self.db.Log(PROCESS_NAME, "Process END")
 
 
 def create():
     app = App()
     app.syncShopeeNewOrderdata()
-
-
-def update():
-    app = App()
-    app.syncShopeeExsOrderData()
