@@ -147,7 +147,7 @@ class ShopeeModule:
 
         params = {
             "order_sn_list": ",".join(order_ecom_id),
-            "response_optional_fields": "buyer_user_id,buyer_username,estimated_shipping_fee",
+            "response_optional_fields": "buyer_user_id,buyer_username,item_list,package_list,edt,prescription_images",
         }
 
         res_json, err = self._call_shopee_api(url_path, params)

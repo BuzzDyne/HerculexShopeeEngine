@@ -74,6 +74,7 @@ class DbModule:
         self.cnx.commit()
 
     def getOrderIDsByEcomIDs(self, list_of_ecoms_id):
+        keys = ['id', 'ecom_order_id', 'ecom_order_status']
         format_string = (','.join(['%s'] * len(list_of_ecoms_id)))
 
         sql = """
@@ -88,4 +89,6 @@ class DbModule:
         self.cursor.execute(sql, tuple(list_of_ecoms_id))
         res = self.cursor.fetchall()
 
-        return res
+        res_dict = [dict(zip(keys, values)) for values in res]
+
+        return res_dict
