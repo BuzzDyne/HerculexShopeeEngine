@@ -34,6 +34,9 @@ class DbModule:
         self.cursor.execute(sql, val)
         self.cnx.commit()
 
+    def insertNewOrder(self, single_order_detail):
+        return
+
     def getProcessSyncDate(self) -> Dict:
         sql = """
             SELECT 
