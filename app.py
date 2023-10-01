@@ -15,14 +15,14 @@ class App:
         self.db.setShopeeTokens(access, refresh)
 
         self.sh.acccessToken = access
-        self.sh.refreshToken = refresh
+        # self.sh.refreshToken = refresh
 
     def separateOrderIDFoundInDbOrNot(self, listDict_shopeeID, listDict_dbID):
         # Extract order_sn values from Shopee orders
-        shopee_order_sns = [order['order_sn'] for order in listDict_shopeeID]
+        shopee_order_sns = [order["order_sn"] for order in listDict_shopeeID]
 
         # Extract ecom_order_id values from DB orders
-        db_order_ids = [db_order['ecom_order_id'] for db_order in listDict_dbID]
+        db_order_ids = [db_order["ecom_order_id"] for db_order in listDict_dbID]
 
         # Initialize lists to store IDs
         FoundInDB = []
@@ -58,33 +58,29 @@ class App:
                 self._refreshAccessToken()
 
         # Get Order Detail from Shopee
-        listDict_shope_order_details = self.sh.getOrderDetail(listStr_of_shopee_active_orders)
+        listDict_shope_order_details = self.sh.getOrderDetail(
+            listStr_of_shopee_active_orders
+        )
 
         # Get Existing
-        listDict_db_order_details = self.db.getOrderIDsByEcomIDs(listStr_of_shopee_active_orders)
+        listDict_db_order_details = self.db.getOrderIDsByEcomIDs(
+            listStr_of_shopee_active_orders
+        )
 
         # Filter ShopeeIDs
-        listStr_FoundInDB, listStr_NotFoundInDB = self.separateOrderIDFoundInDbOrNot(listDict_shope_order_details, listDict_db_order_details)
+        listStr_FoundInDB, listStr_NotFoundInDB = self.separateOrderIDFoundInDbOrNot(
+            listDict_shope_order_details, listDict_db_order_details
+        )
 
-        # Process New Data
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        print()
+        # Process
+        for o in listDict_shope_order_details:
+            if o.get("order_sn") in listStr_NotFoundInDB:
+                # New
+                self.db.processInsertOrder(o)
+            else:
+            # Exisitng
+            self.db.processUpdateOrder(o)
         # Logging
         self.db.Log(PROCESS_NAME, "Process END")
 
@@ -92,5 +88,6 @@ class App:
 def create():
     app = App()
     app.syncShopeeNewOrderdata()
+
 
 create()
