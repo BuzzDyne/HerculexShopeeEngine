@@ -110,6 +110,29 @@ class DbModule:
         order_id = self._insertOrder(single_order_detail)
         self._insertOrderTracking(order_id, "Inserted data from Shopee to system")
         return
+    
+    def processUpdateOrder(self, curr_order_db, new_order_shopee):
+        ts = dt.now(tz.utc)
+        ordertm_id = curr_order_db.get("id")
+        ecom_order_id = curr_order_db.get("ecom_order_id")
+        new_status = new_order_shopee.get("order_status")
+
+        sql = """
+            UPDATE order_tm
+            SET
+                ecom_order_status = %s,
+                last_updated_ts = %s
+            WHERE ecom_order_id = %s AND ecommerce_code = "S"
+        """
+        val = (new_status, ts.strftime('%Y-%m-%d %H:%M:%S'), ecom_order_id)
+
+        self.cursor.execute(sql, val)
+
+        # Insert Tracking
+        activity_msg = f"Order #{ordertm_id} status updated to {new_status}"
+        self._insertOrderTracking(ordertm_id, activity_msg)
+        return
+
 
     def getProcessSyncDate(self) -> Dict:
         sql = """

@@ -78,9 +78,18 @@ class App:
             if o.get("order_sn") in listStr_NotFoundInDB:
                 # New
                 self.db.processInsertOrder(o)
+                self.db.Log(PROCESS_NAME, f"Order with ecom_order_id {o['order_sn']} inserted!")
+
             else:
-            # Exisitng
-            self.db.processUpdateOrder(o)
+                # Exisitng
+                db_order = next((db_order for db_order in listDict_db_order_details if db_order["ecom_order_id"] == o["order_sn"]), None)
+                if db_order:
+                    self.db.processUpdateOrder(db_order, o)
+                    self.db.Log(PROCESS_NAME, f"Order status for ecom_order_id {o['order_sn']} has changed from {db_order['ecom_order_status']} to {o['order_status']}")
+                else:
+                    self.db.Log(PROCESS_NAME, f"Order with ecom_order_id {o['order_sn']} not found in the DB")
+
+
         # Logging
         self.db.Log(PROCESS_NAME, "Process END")
 
