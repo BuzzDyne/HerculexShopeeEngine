@@ -9,6 +9,13 @@ class App:
         self.sh = ShopeeModule(syncData["access_token"], syncData["refresh_token"])
         self._refreshAccessToken()
 
+    def _call_ordelist(self):
+        start_time = 1694794966
+        end_time = 1695226966
+        self.sh.getListOrders(start_time, end_time)
+
+        return
+
     def _refreshAccessToken(self):
         access, refresh = self.sh.getNewTokens()
 
@@ -49,54 +56,87 @@ class App:
         self.db.Log(PROCESS_NAME, "Process BEGIN")
 
         # Get On Process Shopee Orders
-        success = False
-        while not success:
-            try:
-                listStr_of_shopee_active_orders = self.sh.getActiveOrders()
-                success = True
-            except ShopeeAccessTokenExpired as e:
-                self._refreshAccessToken()
+        listStr_shopee_active_orders = self.sh.getActiveOrders()
 
         # Get Order Detail from Shopee
         listDict_shope_order_details = self.sh.getOrderDetail(
-            listStr_of_shopee_active_orders
+            listStr_shopee_active_orders
+        )
+
+        self.db.Log(
+            PROCESS_NAME,
+            f"Got {len(listStr_shopee_active_orders)} current active orders from ShopeeAPI",
         )
 
         # Get Existing
         listDict_db_order_details = self.db.getOrderIDsByEcomIDs(
-            listStr_of_shopee_active_orders
+            listStr_shopee_active_orders
         )
 
         # Filter ShopeeIDs
-        listStr_FoundInDB, listStr_NotFoundInDB = self.separateOrderIDFoundInDbOrNot(
+        _, listStr_NotFoundInDB = self.separateOrderIDFoundInDbOrNot(
             listDict_shope_order_details, listDict_db_order_details
         )
 
-        print()
-        # Process
+        n_newOrders = 0
+        n_updatedOrders = 0
+
+        # Process Insert New Orders
         for o in listDict_shope_order_details:
-            if o.get("order_sn") in listStr_NotFoundInDB:
-                # New
+            if o["order_sn"] in listStr_NotFoundInDB:
                 self.db.processInsertOrder(o)
-                self.db.Log(PROCESS_NAME, f"Order with ecom_order_id {o['order_sn']} inserted!")
+                n_newOrders += 1
+                self.db.Log(
+                    PROCESS_NAME, f"Order with ecom_order_id {o['order_sn']} inserted!"
+                )
 
-            else:
-                # Exisitng
-                db_order = next((db_order for db_order in listDict_db_order_details if db_order["ecom_order_id"] == o["order_sn"]), None)
-                if db_order:
-                    self.db.processUpdateOrder(db_order, o)
-                    self.db.Log(PROCESS_NAME, f"Order status for ecom_order_id {o['order_sn']} has changed from {db_order['ecom_order_status']} to {o['order_status']}")
-                else:
-                    self.db.Log(PROCESS_NAME, f"Order with ecom_order_id {o['order_sn']} not found in the DB")
+        # Process Update Exs Orders
+        # Get List of need to be updated order_sn from DB
+        listDict_NeedToCheckDBOrders = self.db.getOrderNeedToBeUpdated(
+            listStr_shopee_active_orders
+        )
 
+        listStr_NeedToCheckDBOrderIDs = [
+            orderData["ecom_order_id"] for orderData in listDict_NeedToCheckDBOrders
+        ]
+
+        # Get the detail data from ShopeeAPI
+        listDict_shope_order_details = self.sh.getOrderDetail(
+            listStr_NeedToCheckDBOrderIDs
+        )
+
+        # Update to DB if Status has changed
+        for order_to_check in listDict_NeedToCheckDBOrders:
+            # Find the corresponding order details in listDict_shope_order_details
+            matching_order = next(
+                (
+                    o
+                    for o in listDict_shope_order_details
+                    if o["order_sn"] == order_to_check["ecom_order_id"]
+                ),
+                None,
+            )
+
+            if matching_order:
+                new_status = matching_order["order_status"]
+                if order_to_check["ecom_order_status"] != new_status:
+                    # Call the update function as the status has changed
+                    self.db.processUpdateOrder(order_to_check["id"], new_status)
+                    n_updatedOrders += 1
+
+        self.db.Log(
+            PROCESS_NAME,
+            f"Inserted ({n_newOrders}) new orders | Found ({len(listStr_shopee_active_orders) - n_newOrders}) orders already in DB with unchanged status | Checked ({len(listStr_NeedToCheckDBOrderIDs)}) existing orders | Updated ({n_updatedOrders}) orders",
+        )
 
         # Logging
         self.db.Log(PROCESS_NAME, "Process END")
 
 
-def create():
+def sync():
     app = App()
+    # app._call_ordelist()
     app.syncShopeeNewOrderdata()
 
 
-create()
+sync()

@@ -141,20 +141,56 @@ class ShopeeModule:
 
         return [order["order_sn"] for order in res_json["response"]["order_list"]]
 
-    def getOrderDetail(self, order_ecom_id):
-        """returns a list of dict containing each OrderDetails from ShopeeAPI"""
-        url_path = "/api/v2/order/get_order_detail"
+    def getListOrders(self, begin_ts, end_ts):
+        url_path = "/api/v2/order/get_order_list"
 
         params = {
-            "order_sn_list": ",".join(order_ecom_id),
-            "response_optional_fields": "buyer_user_id,buyer_username,item_list,package_list",
+            "time_range_field": "create_time",
+            "response_optional_fields": "order_status",
+            "time_from": begin_ts,
+            "time_to": end_ts,
+            "page_size": 20,
         }
 
         res_json, err = self._call_shopee_api(url_path, params)
         if err is not None:
             print(err)
 
-        return res_json["response"]["order_list"]
+        listStr_ecomOrderIDs = [
+            order["order_sn"] for order in res_json["response"]["order_list"]
+        ]
+
+        for id in listStr_ecomOrderIDs:
+            self.getOrderDetail([id])
+
+        return
+
+    def getOrderDetail(self, listStr_orderEcomIDs):
+        """Returns a list of dictionaries containing OrderDetails from ShopeeAPI."""
+        url_path = "/api/v2/order/get_order_detail"
+
+        # Initialize an empty list to store the results
+        all_order_details = []
+
+        # Split the order_ecom_id list into batches of 50
+        for i in range(0, len(listStr_orderEcomIDs), 50):
+            batch_order_ids = listStr_orderEcomIDs[i : i + 50]
+
+            params = {
+                "order_sn_list": ",".join(batch_order_ids),
+                "response_optional_fields": "buyer_user_id,buyer_username,item_list,package_list",
+            }
+
+            res_json, err = self._call_shopee_api(url_path, params)
+
+            if err is not None:
+                print(err)
+
+            # Append the results to the all_order_details list
+            if "response" in res_json and "order_list" in res_json["response"]:
+                all_order_details.extend(res_json["response"]["order_list"])
+
+        return all_order_details
 
 
 class ShopeeAPIError(Exception):

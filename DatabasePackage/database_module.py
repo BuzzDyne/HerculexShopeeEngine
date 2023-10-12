@@ -110,29 +110,31 @@ class DbModule:
         order_id = self._insertOrder(single_order_detail)
         self._insertOrderTracking(order_id, "Inserted data from Shopee to system")
         return
-    
-    def processUpdateOrder(self, curr_order_db, new_order_shopee):
+
+    def processUpdateOrder(self, curr_db_order_id, new_shopee_order_status):
         ts = dt.now(tz.utc)
-        ordertm_id = curr_order_db.get("id")
-        ecom_order_id = curr_order_db.get("ecom_order_id")
-        new_status = new_order_shopee.get("order_status")
 
         sql = """
             UPDATE order_tm
             SET
                 ecom_order_status = %s,
                 last_updated_ts = %s
-            WHERE ecom_order_id = %s AND ecommerce_code = "S"
+            WHERE id = %s AND ecommerce_code = "S"
         """
-        val = (new_status, ts.strftime('%Y-%m-%d %H:%M:%S'), ecom_order_id)
+        val = (
+            new_shopee_order_status,
+            ts.strftime("%Y-%m-%d %H:%M:%S"),
+            curr_db_order_id,
+        )
 
         self.cursor.execute(sql, val)
 
         # Insert Tracking
-        activity_msg = f"Order #{ordertm_id} status updated to {new_status}"
-        self._insertOrderTracking(ordertm_id, activity_msg)
+        activity_msg = (
+            f"Order #{curr_db_order_id} status updated to {new_shopee_order_status}"
+        )
+        self._insertOrderTracking(curr_db_order_id, activity_msg)
         return
-
 
     def getProcessSyncDate(self) -> Dict:
         sql = """
@@ -160,13 +162,14 @@ class DbModule:
         sql = """
             UPDATE hcxprocesssyncstatus_tm
             SET
-                access_token = %s
+                access_token = %s,
+                refresh_token = %s
             WHERE platform_name = "SHOPEE"
         """
 
         val = (
             access_token,
-            # refresh_token,
+            refresh_token,
         )
 
         self.cursor.execute(sql, val)
@@ -189,6 +192,31 @@ class DbModule:
             % format_string
         )
         self.cursor.execute(sql, tuple(list_of_ecoms_id))
+        res = self.cursor.fetchall()
+
+        res_dict = [dict(zip(keys, values)) for values in res]
+
+        return res_dict
+
+    def getOrderNeedToBeUpdated(self, listStr_NotIn_Ecoms_id):
+        keys = ["id", "ecom_order_id", "ecom_order_status"]
+        format_string = ",".join(["%s"] * len(listStr_NotIn_Ecoms_id))
+
+        sql = (
+            """
+            SELECT 
+                id, 
+                ecom_order_id,
+                ecom_order_status
+            FROM order_tm
+            WHERE ecommerce_code = "S"
+            AND ecom_order_status = "READY_TO_SHIP"
+            AND ecom_order_id NOT IN (%s)
+            
+        """
+            % format_string
+        )
+        self.cursor.execute(sql, tuple(listStr_NotIn_Ecoms_id))
         res = self.cursor.fetchall()
 
         res_dict = [dict(zip(keys, values)) for values in res]
