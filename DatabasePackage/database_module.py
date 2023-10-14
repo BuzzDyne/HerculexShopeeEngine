@@ -1,12 +1,7 @@
 import time
 import mysql.connector
-from typing import Tuple, Dict, List
 
 from _cred import Credentials
-from DatabasePackage.constants import ORDER_STATUS_MESSAGES
-
-from datetime import datetime as dt
-from datetime import timezone as tz
 
 
 class DbModule:
@@ -111,23 +106,45 @@ class DbModule:
         self._insertOrderTracking(order_id, "Inserted data from Shopee to system")
         return
 
-    def processUpdateOrder(self, curr_db_order_id, new_shopee_order_status):
-        ts = dt.now(tz.utc)
+    def processUpdateOrder(
+        self,
+        curr_db_order_id,
+        new_shopee_order_status,
+        str_currdatetime,
+        isUpdateShippedDate,
+    ):
+        if isUpdateShippedDate:
+            sql = """
+                UPDATE order_tm
+                SET
+                    ecom_order_status = %s,
+                    last_updated_ts = %s,
+                    shipped_dt = %s
+                WHERE id = %s AND ecommerce_code = "S"
+            """
+            val = (
+                new_shopee_order_status,
+                str_currdatetime,
+                str_currdatetime,
+                curr_db_order_id,
+            )
 
-        sql = """
-            UPDATE order_tm
-            SET
-                ecom_order_status = %s,
-                last_updated_ts = %s
-            WHERE id = %s AND ecommerce_code = "S"
-        """
-        val = (
-            new_shopee_order_status,
-            ts.strftime("%Y-%m-%d %H:%M:%S"),
-            curr_db_order_id,
-        )
+            self.cursor.execute(sql, val)
+        else:
+            sql = """
+                UPDATE order_tm
+                SET
+                    ecom_order_status = %s,
+                    last_updated_ts = %s
+                WHERE id = %s AND ecommerce_code = "S"
+            """
+            val = (
+                new_shopee_order_status,
+                str_currdatetime,
+                curr_db_order_id,
+            )
 
-        self.cursor.execute(sql, val)
+            self.cursor.execute(sql, val)
 
         # Insert Tracking
         activity_msg = (
@@ -136,7 +153,7 @@ class DbModule:
         self._insertOrderTracking(curr_db_order_id, activity_msg)
         return
 
-    def getProcessSyncDate(self) -> Dict:
+    def getProcessSyncDate(self):
         sql = """
             SELECT 
                 initial_sync, 
@@ -157,6 +174,19 @@ class DbModule:
             "access_token": res[2],
             "refresh_token": res[3],
         }
+
+    def setLastSynced(self, input_unixTS):
+        sql = """
+            UPDATE hcxprocesssyncstatus_tm
+            SET
+                last_synced = %s
+            WHERE platform_name = "SHOPEE"
+        """
+
+        val = (input_unixTS,)
+
+        self.cursor.execute(sql, val)
+        self.cnx.commit()
 
     def setShopeeTokens(self, access_token, refresh_token):
         sql = """
