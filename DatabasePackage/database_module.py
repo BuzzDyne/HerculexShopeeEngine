@@ -19,10 +19,10 @@ class DbModule:
         sql = """
             INSERT INTO order_tm (
                 ecommerce_code, ecom_order_id, buyer_id, ecom_order_status,
-                pltf_deadline_dt, feeding_dt
+                pltf_deadline_dt, feeding_dt, internal_status_id
             ) VALUES (
                 %s, %s, %s, %s,
-                FROM_UNIXTIME(%s),%s
+                FROM_UNIXTIME(%s),%s,%s
             )
         """
 
@@ -33,6 +33,7 @@ class DbModule:
             orderData.get("order_status"),
             orderData.get("ship_by_date"),
             time.strftime("%Y-%m-%d %H:%M:%S"),
+            "000",
         )
 
         self.cursor.execute(sql, param)
@@ -147,9 +148,7 @@ class DbModule:
             self.cursor.execute(sql, val)
 
         # Insert Tracking
-        activity_msg = (
-            f"Order #{curr_db_order_id} status updated to {new_shopee_order_status}"
-        )
+        activity_msg = f"Order #{curr_db_order_id} platform status updated to {new_shopee_order_status}"
         self._insertOrderTracking(curr_db_order_id, activity_msg)
         return
 
