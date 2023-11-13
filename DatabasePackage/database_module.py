@@ -120,13 +120,15 @@ class DbModule:
                 SET
                     ecom_order_status = %s,
                     last_updated_ts = %s,
-                    shipped_dt = %s
+                    shipped_dt = %s,
+                    internal_status_id = %s
                 WHERE id = %s AND ecommerce_code = "S"
             """
             val = (
                 new_shopee_order_status,
                 str_currdatetime,
                 str_currdatetime,
+                "999",
                 curr_db_order_id,
             )
 
