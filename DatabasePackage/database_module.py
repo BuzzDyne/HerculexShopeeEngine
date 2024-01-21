@@ -241,7 +241,7 @@ class DbModule:
                 ecom_order_status
             FROM order_tm
             WHERE ecommerce_code = "S"
-            AND ecom_order_status = "READY_TO_SHIP"
+            AND ecom_order_status IN ("READY_TO_SHIP", "PROCESSED")
             AND ecom_order_id NOT IN (%s)
             
         """
