@@ -123,7 +123,7 @@ class App:
                 if old_status != new_status:
                     # Call the update function as the status has changed
                     curr_dt = dt.now(tz.utc).strftime("%Y-%m-%d %H:%M:%S")
-                    if old_status == "READY_TO_SHIP":
+                    if new_status not in ("READY_TO_SHIP", "PROCESSED"):
                         self.db.processUpdateOrder(
                             order_to_check["id"], new_status, curr_dt, True
                         )
